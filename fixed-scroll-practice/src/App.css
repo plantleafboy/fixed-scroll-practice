@@ -45,7 +45,7 @@ p {
   line-height: 80%;
 }
 
-model {
+#model {
   position: fixed;
     width: 100%;
   height: 100vh;

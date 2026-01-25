@@ -1,0 +1,11 @@
+Model Information:
+* title:	Penrose Triangle
+* source:	https://sketchfab.com/3d-models/penrose-triangle-30092160cfaa4d12b153aafd9eaa60a8
+* author:	Robert Kotsch (https://sketchfab.com/robertkotsch)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Penrose Triangle" (https://sketchfab.com/3d-models/penrose-triangle-30092160cfaa4d12b153aafd9eaa60a8) by Robert Kotsch (https://sketchfab.com/robertkotsch) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
