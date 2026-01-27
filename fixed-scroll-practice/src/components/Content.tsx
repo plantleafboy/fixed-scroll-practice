@@ -3,8 +3,10 @@ import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { Tween, Group, Easing } from '@tweenjs/tween.js';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-
+import LenisProvider from '../components/LenisProvider';
 
 
 
@@ -19,22 +21,46 @@ const Content = () => {
     const objectRef = useRef<THREE.Object3D | null>(null);
     const boxRef = useRef<THREE.Box3 | null>(null);
     const tweenGroup = useRef(new Group());
- 
+    const scannerRef = useRef<HTMLDivElement> (null);
+    const scanContainerRef = useRef<HTMLDivElement>(null);
+    
+    let scrollYOffset = { value: -1.5 }; // Starting Y position
 
-    const playInitialAnimation = () => {
-        if (!objectRef.current) return;
-
-        // Example: Make the spiral grow from scale 0 to 1
-        objectRef.current.scale.set(0, 0, 0);
-
-        new Tween(objectRef.current.scale, tweenGroup.current)
-            .to({ x: 1, y: 1, z: 1 }, 1500)
-            .easing(Easing.Back.Out)
-            .start();
-    };
     useEffect(() => {
 
         let frameId : number;
+
+        //
+
+        const floatAmplitude = 0.2;
+        const floatSpeed = 1.5;
+        const rotationSpeed = 0.3;
+        let isFloating = true;
+        let currentScroll = 0;
+
+        // const stickyHeight = window.innerHeight;
+
+        // if (scanContainerRef.current) {
+        //     gsap.set(scanContainerRef.current, {scale: 0});
+        // }
+        // if (scannerRef.current) {
+        //     const scannerPosition = scannerRef.offsetTop;
+
+        //     // Example ScrollTrigger
+        //     gsap.to(objectRef.current!.position, {
+        //         scrollTrigger: {
+        //             trigger: scannerRef.current,
+        //             start: "top center",
+        //             end: "bottom center",
+        //             scrub: true
+        //         },
+        //         y: 2 // Moves the spiral up as you scroll
+        //     });
+        // }        
+
+
+
+        //
 
         const model = modelRef.current;
         if (!model) return;
@@ -83,11 +109,52 @@ const Content = () => {
         }
         rendererRef.current = renderer;
 
-        const animate = () => {
+        
+
+        const playInitialAnimation = () => {
+            if (!objectRef.current) return;
+
+            // Example: Make the spiral grow from scale 0 to 1
+            objectRef.current.scale.set(0, 0, 0);
+
+            new Tween(objectRef.current.scale, tweenGroup.current)
+                .to({ x: 1.5, y: 1.5, z: 1.5 }, 1500)
+                .easing(Easing.Back.Out)
+                .start();
+            
+            gsap.to(objectRef.current.scale, {
+                    x: 1.5,
+                    y: 1.5,
+                    z: 1.5,
+                    duration: 1,
+                    ease: "power2.out",
+            });
+            
+        };
+
+        gsap.to(scanContainerRef.current, { //TODO: whats this shit
+                    scale: 1,
+                    duration: 1,
+                    ease: "power2.out",
+        });
+
+        let time = 0;
+
+        const animate = () => { //TODO: confirm order of movement
             frameId = requestAnimationFrame(animate);
 
+            time += 0.01 * floatSpeed; // Increment time based on your speed variable
+
+            if (objectRef.current) {
+                // Math.sin creates a smooth up-and-down wave
+                objectRef.current.position.y = -4 + Math.sin(time) * floatAmplitude;
+                
+                // Add a tiny bit of continuous rotation
+                objectRef.current.rotation.y += 0.005;
+            }
+
             if (rendererRef.current && sceneRef.current && cameraRef.current) {
-            rendererRef.current.render(sceneRef.current, cameraRef.current);
+                rendererRef.current.render(sceneRef.current, cameraRef.current);
             }
 
             tweenGroup.current.update();
@@ -97,10 +164,12 @@ const Content = () => {
         const loader = new GLTFLoader();
         loaderRef.current = loader;
 
-        loader.load('../../../public/spiral.glb', (gltf: GLTF) => {
+        loader.load('../../../spiral.glb', (gltf: GLTF) => {
+        // loader.load('../../../penrose_triangle/scene.gltf', (gltf: GLTF) => {
+
             objectRef.current = gltf.scene;
             
-            gltf.scene.traverse((node: THREE.Object3D) => {
+            gltf.scene.traverse((node: THREE.Object3D) => {                  //TODO: what is scene.traverse
                 if ((node as THREE.Mesh).isMesh) {
                     const mesh = node as THREE.Mesh;
                     
@@ -110,23 +179,23 @@ const Content = () => {
                         mesh.material.roughness = 0.2;
                         mesh.material.envMapIntensity = 1.5;
                     }
-                    
                     mesh.castShadow = true;
-                    // mesh.receiveShadow = true;
                 }
             });
             
             if (objectRef.current) {
-                const box = new THREE.Box3().setFromObject(objectRef.current);
+                const box = new THREE.Box3().setFromObject(objectRef.current); //TODO: what are boxes and shit, why used as center reference
                 boxRef.current = box;
                 const center = box.getCenter(new THREE.Vector3());
                 gltf.scene.position.sub(center);
-                scene.add(gltf.scene)
+                gltf.scene.position.y -= 1.5;   
+
+                scene.add(gltf.scene) //TODO: how not to reference gltf.scene 
 
                 const size = box.getSize(new THREE.Vector3());
                 const maxDim = Math.max(size.x, size.y, size.z);
                 camera.position.z = maxDim * 1.5;
-                // gltf.scene.scale.set(0,0,0,);
+                gltf.scene.scale.set(1.5,1.5,1.5);
                 camera.lookAt(0,0,0);
 
                 playInitialAnimation();
@@ -156,7 +225,7 @@ const Content = () => {
     }, []) 
 
     return (
-        <>
+        <LenisProvider>
             <div id="model" ref={modelRef}></div>
 
             <section  className="hero">
@@ -179,7 +248,7 @@ const Content = () => {
                  </h2>
             </section>
 
-            <section className="scanner">
+            <section className="scanner" ref={scannerRef}>
                 <div className="scan-info">
                     <div className="product-id"><h2>$42_88</h2></div>
                     <div className="product-description">
@@ -188,7 +257,7 @@ const Content = () => {
                 </div>
             </section>
 
-            <div className="scan-container"> </div>
+            <div className="scan-container" ref={scanContainerRef}> </div>
 
             <div className="barcode">
                 <img src="../assets/barcode.png" alt="" />
@@ -199,8 +268,11 @@ const Content = () => {
             </div>
             <section className="outro"></section>
 
-        </>
+        </LenisProvider>
     )
 } 
 
 export default Content;
+
+// TODO: create the scene with another model - learn the attributes to look for
+// extra: create own model...
