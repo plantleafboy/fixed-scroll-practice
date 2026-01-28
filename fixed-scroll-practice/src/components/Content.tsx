@@ -24,8 +24,8 @@ const Content = () => {
     const scannerRef = useRef<HTMLDivElement> (null);
     const scanContainerRef = useRef<HTMLDivElement>(null);
     
-    let scrollYOffset = { value: -1.5 }; // Starting Y position
-
+    // let scrollYOffset = { value: -3.5 }; // Starting Y position
+    const scrollYOffset = useRef({ value: -3.5 });
     useEffect(() => {
 
         let frameId : number;
@@ -147,9 +147,7 @@ const Content = () => {
 
             if (objectRef.current) {
                 // Math.sin creates a smooth up-and-down wave
-                objectRef.current.position.y = -4 + Math.sin(time) * floatAmplitude;
-                
-                // Add a tiny bit of continuous rotation
+                objectRef.current.position.y = scrollYOffset.current.value + Math.sin(time) * floatAmplitude;
                 objectRef.current.rotation.y += 0.005;
             }
 
@@ -169,36 +167,50 @@ const Content = () => {
 
             objectRef.current = gltf.scene;
             
-            gltf.scene.traverse((node: THREE.Object3D) => {                  //TODO: what is scene.traverse
-                if ((node as THREE.Mesh).isMesh) {
-                    const mesh = node as THREE.Mesh;
-                    
-                    // Ensure the material exists and is a StandardMaterial (common for GLB)
-                    if (mesh.material && mesh.material instanceof THREE.MeshStandardMaterial) {
-                        mesh.material.metalness = 0.5;
-                        mesh.material.roughness = 0.2;
-                        mesh.material.envMapIntensity = 1.5;
+            if (objectRef.current) {
+                objectRef.current.traverse((node: THREE.Object3D) => {                  //TODO: what is scene.traverse
+                    if ((node as THREE.Mesh).isMesh) {
+                        const mesh = node as THREE.Mesh;
+                        
+                        // Ensure the material exists and is a StandardMaterial (common for GLB)
+                        if (mesh.material && mesh.material instanceof THREE.MeshStandardMaterial) {
+                            mesh.material.metalness = 0.5;
+                            mesh.material.roughness = 0.2;
+                            mesh.material.envMapIntensity = 1.5;
+                        }
+                        mesh.castShadow = true;
                     }
-                    mesh.castShadow = true;
-                }
-            });
-            
+                });
+            }
             if (objectRef.current) {
                 const box = new THREE.Box3().setFromObject(objectRef.current); //TODO: what are boxes and shit, why used as center reference
                 boxRef.current = box;
                 const center = box.getCenter(new THREE.Vector3());
-                gltf.scene.position.sub(center);
-                gltf.scene.position.y -= 1.5;   
+                objectRef.current.position.sub(center);
+                objectRef.current.position.y = scrollYOffset.value;   
 
-                scene.add(gltf.scene) //TODO: how not to reference gltf.scene 
+                scene.add(objectRef.current) //TODO: how not to reference gltf.scene 
 
                 const size = box.getSize(new THREE.Vector3());
                 const maxDim = Math.max(size.x, size.y, size.z);
-                camera.position.z = maxDim * 1.5;
-                gltf.scene.scale.set(1.5,1.5,1.5);
+                camera.position.z = maxDim; //*1
+                gobjectRef.current.scale.set(1.5,1.5,1.5);
                 camera.lookAt(0,0,0);
 
                 playInitialAnimation();
+
+                // 2. Setup GSAP inside the loader success callback
+                if (scannerRef.current) {
+                    gsap.to(scrollYOffset.current, {
+                        value: 2, // The target Y position when scrolled
+                        scrollTrigger: {
+                            trigger: scannerRef.current,
+                            start: "top center",
+                            end: "bottom center",
+                            scrub: true,
+                        }
+                    });
+                }
 
 
             } else {
