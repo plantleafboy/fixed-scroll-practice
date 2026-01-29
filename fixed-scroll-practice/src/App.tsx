@@ -4,12 +4,12 @@ import LenisProvider from './components/LenisProvider';
 import Content from './components/Content';
 import './App.css'
 
+
 function App() {
 
-  const lpCheck = document.getElementsByTagName("LenisProvider");
-
   useEffect(() => {
-    console.log(lpCheck);
+    const isLenisClassPresent = document.documentElement.classList.contains('lenis'); // X - checking by react component DNE as HTML tag 
+    console.log('Smooth scroll active on <html> tag:', isLenisClassPresent);
   });
 
 
