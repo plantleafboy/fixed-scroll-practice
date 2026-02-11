@@ -5,7 +5,9 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { Tween, Group, Easing } from '@tweenjs/tween.js';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-gsap.registerPlugin(ScrollTrigger);
+import { SplitText } from "gsap/SplitText";
+import { ScrambleTextPlugin } from "gsap/ScrambleTextPlugin";
+gsap.registerPlugin(ScrollTrigger, SplitText, ScrambleTextPlugin);
 ScrollTrigger.config({ limitCallbacks: true });
 import { useLenis } from 'lenis/react';
 
@@ -25,7 +27,6 @@ const Content = () => {
     const sceneRef = useRef<THREE.Scene | null>(null);
     const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-
     const loaderRef = useRef<GLTFLoader | null>(null);
     const objectRef = useRef<THREE.Object3D | null>(null);
     const boxRef = useRef<THREE.Box3 | null>(null);
@@ -34,7 +35,51 @@ const Content = () => {
     const scanContainerRef = useRef<HTMLDivElement>(null);
     
     const scrollYOffset = useRef({ value: -1.5 });
+    const headerRef = useRef<HTMLHeadingElement>(null);
+    const scrambleRef = useRef<HTMLHeadingElement>(null);
+    
+    const scrambleChars = 'upperAndLowerCase';
     useEffect(() => {
+
+        SplitText.create(headerRef.current!, {
+            type: "characters,lines, words",
+            mask: "words",
+            autoSplit: true,
+            onSplit(self) {
+                return gsap.from(self.words, {
+                duration: 1, 
+                y: 100, 
+                autoAlpha: 0, 
+                stagger: 0.05
+                });
+            }
+        });
+
+                
+        // Creates a looping timeline for a single quote element
+        const scrambleQuote = (ref: React.RefObject<HTMLHeadingElement | null>, text: string) => {
+            const tl = gsap.timeline({});
+
+            // Show quote with scramble in
+            tl.to(ref.current, {
+            delay: Math.random() * 5, // Stagger the appearance
+            duration: 1,
+            opacity: 1,
+            scrambleText: { text, chars: scrambleChars, revealDelay: 0.5, speed: 1 },
+            ease: 'power2.out',
+            })
+
+            // // Hide quote with scramble out
+            // .to(ref.current, {
+            // delay: 0.5,
+            // duration: 1,
+            // scrambleText: { text: '', chars: scrambleChars },
+            // opacity: 0,
+            // ease: 'power2.in',
+            // });
+        };
+
+        scrambleQuote(scrambleRef, scrambleRef.current?.textContent ?? '');
 
         let frameId : number;
 
@@ -58,12 +103,16 @@ const Content = () => {
         dirLight.castShadow = true;
         scene.add(dirLight);
         
-        const camera = new THREE.PerspectiveCamera(40, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(40, window.innerWidth/window.innerHeight, 5, 1000);
         cameraRef.current = camera;
 
         const renderer = new THREE.WebGLRenderer({
-            antialias: true, alpha: true
+            antialias: true,
+            alpha: false, // Turn this off
+            logarithmicDepthBuffer: true,
+            powerPreference: "high-performance"
         });
+        renderer.setClearColor(0xfffdfd, 1); // Match your background color here
 
         renderer.setClearColor(0xffffff, 1);
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -76,7 +125,7 @@ const Content = () => {
         // Lighting and Tone Mapping
         renderer.outputColorSpace = THREE.SRGBColorSpace; 
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 2.5;
+        renderer.toneMappingExposure = 1.2;
 
 
         if (model) {
@@ -123,35 +172,37 @@ const Content = () => {
 
             if (objectRef.current) {
                 const liveScroll = scrollRef.current;
-
-                // Math.sin creates a smooth up-and-down wave
-                objectRef.current.position.y = scrollYOffset.current.value + Math.sin(time) * floatAmplitude;
-                objectRef.current.rotation.y += 0.005;
-
-                // 1. Calculate Progress- Use the offsetTop of your scanner section to know when the model should be "flipped"
                 const scannerPosition1 = scannerRef.current?.offsetTop || 1000;
                 const scrollProgress1 = Math.min(liveScroll / scannerPosition1, 1);
-                // const scannerHeight = scannerRef.current?.offsetHeight || window.innerHeight;
 
-                // const shrinkStart = scannerPosition1;
-                // const shrinkDistance = scannerHeight; 
-                // const shrinkProgress = Math.max(0, Math.min((liveScroll - shrinkStart) / shrinkDistance, 1));
+                // Handle Position: Combined Floating + Scroll Offset
+                const floatOffset = isFloating ? Math.sin(time) * floatAmplitude : 0;
+                objectRef.current.position.y = scrollYOffset.current.value + floatOffset;
 
-                // // Apply Scale: Stay 1.5 until shrinkProgress starts, then go to 0
-                // const currentScale = 1.5 * (1 - shrinkProgress);
-                // objectRef.current.scale.set(currentScale, currentScale, currentScale);
-
-                if (isFloating) {
-                    const floatOffset = Math.sin(time) * floatAmplitude;
-                    objectRef.current.position.y = scrollYOffset.current.value + floatOffset;
-                }
-
-                 objectRef.current.position.y = scrollYOffset.current.value;
-                // 3. Scroll-Based Rotation - Maps 0-1 progress to a full 360-degree X-axis rotation
+                // Handle Rotation: Combined Scroll Rotation + Idle Spin
                 objectRef.current.rotation.x = scrollProgress1 * Math.PI * 2;
-                
-                // Keeps the model spinning slightly on the Y-axis for constant movement
                 objectRef.current.rotation.y += 0.001 * rotationSpeed;
+                // const liveScroll = scrollRef.current;
+
+                // // Math.sin creates a smooth up-and-down wave
+                // objectRef.current.position.y = scrollYOffset.current.value + Math.sin(time) * floatAmplitude;
+                // objectRef.current.rotation.y += 0.005;
+
+                // // 1. Calculate Progress- Use the offsetTop of your scanner section to know when the model should be "flipped"
+                // const scannerPosition1 = scannerRef.current?.offsetTop || 1000;
+                // const scrollProgress1 = Math.min(liveScroll / scannerPosition1, 1);
+
+                // if (isFloating) {
+                //     const floatOffset = Math.sin(time) * floatAmplitude;
+                //     objectRef.current.position.y = scrollYOffset.current.value + floatOffset;
+                // }
+
+                //  objectRef.current.position.y = scrollYOffset.current.value;
+                // // 3. Scroll-Based Rotation - Maps 0-1 progress to a full 360-degree X-axis rotation
+                // objectRef.current.rotation.x = scrollProgress1 * Math.PI * 2;
+                
+                // // Keeps the model spinning slightly on the Y-axis for constant movement
+                // objectRef.current.rotation.y += 0.001 * rotationSpeed;
 
                 
             }
@@ -168,7 +219,6 @@ const Content = () => {
         loaderRef.current = loader;
 
         loader.load('../../../spiral.glb', (gltf: GLTF) => {
-        // loader.load('../../../penrose_triangle/scene.gltf', (gltf: GLTF) => {
 
             objectRef.current = gltf.scene;
             
@@ -182,20 +232,28 @@ const Content = () => {
                         if (mesh.material && mesh.material instanceof THREE.MeshStandardMaterial) {
                             mesh.material.metalness = 0.5;
                             mesh.material.roughness = 0.2;
-                            mesh.material.envMapIntensity = 1.5;
+                            mesh.material.envMapIntensity = 1.2;
+                            // mesh.material.metalness = 0.5;
+                            mesh.material.transparent = false; // Usually better for spirals
+                            mesh.material.depthWrite = true;
+                            //  mesh.material.depthTest = true;
+                             mesh.material.side = THREE.DoubleSide;
+                            // mesh.material.roughness = 0.2;
+                            // mesh.material.envMapIntensity = 1.5;
+                            // mesh.material.polygonOffset = true; // Prevents overlapping faces from fighting
+                            // mesh.material.polygonOffsetFactor = 1;
+                            // mesh.material.polygonOffsetUnits = 1;
                         }
-                        mesh.castShadow = true;
+                        // mesh.castShadow = true;
                     }
                 });
             }
             if (objectRef.current) {
                 const box = new THREE.Box3().setFromObject(objectRef.current);
                 boxRef.current = box;
-                // const center = box.getCenter(new THREE.Vector3());
-                // objectRef.current.position.sub(center);
                 objectRef.current.position.y = scrollYOffset.value;   
 
-                scene.add(objectRef.current) //TODO: how not to reference gltf.scene 
+                scene.add(objectRef.current) 
 
                 const size = box.getSize(new THREE.Vector3());
                 const maxDim = Math.max(size.x, size.y, size.z);
@@ -216,7 +274,6 @@ const Content = () => {
                                 duration: 0.8,
                                 ease: "back.in(1.7)",
                                 onComplete: () => {
-                                    // This is the "Success Callback" of the Animation
                                     console.log("Shrink finished!");
                                 }
                             });
@@ -225,56 +282,6 @@ const Content = () => {
                 });
 
                 playInitialAnimation();
-
-            //     ScrollTrigger.create({
-            //         trigger: "body",
-            //         start: "top top",
-            //         end: "top -10",
-            //         onEnterBack: () => {
-            //             if (objectRef.current) {
-            //                 gsap.to(objectRef.current.scale, {
-            //                     x: 1.5, // Your "large" scale
-            //                     y: 1.5,
-            //                     z: 1.5,
-            //                     duration: 1,
-            //                     ease: "power2.out",
-            //                 });
-            //                 isFloating = true; 
-            //             }
-            //             if (scanContainerRef.current) {
-            //                 gsap.to(scanContainerRef.current, {
-            //                     scale: 1,
-            //                     duration: 1,
-            //                     ease: "power2.out",
-            //                 });
-            //             }
-            //         }
-            //     });
-
-            //     // 2. Trigger for the Scanner section (Pinned interaction)
-            // ScrollTrigger.create({
-            //         trigger: ".scanner",
-            //         start: "top top",
-            //         end: `${window.innerHeight}px`, // Using innerHeight for stickyHeight
-            //         pin: true,
-            //         onEnter: () => {
-            //             if (objectRef.current) {
-            //                 isFloating = false; // Stops the Math.sin wobble
-                            
-            //                 // We animate the proxy value instead of hard-setting to 0
-            //                 // so it doesn't "snap" instantly
-            //                 gsap.to(scrollYOffset, {
-            //                     value: 0, 
-            //                     duration: 0.5
-            //                 });
-
-            //                 // Optional: Audio logic if you have a scanSound ref
-            //                 // setTimeout(() => {
-            //                 //    scanSoundRef.current?.play();
-            //                 // }, 500);
-            //             }
-            //         },
-            //     });
 
                 // 2. Setup GSAP inside the loader success callback
                 if (scannerRef.current) {
@@ -288,21 +295,14 @@ const Content = () => {
                         }
                     });
                 }
-
-
             } else {
                 return;
             }
         });
 
         animate();        
-        // cancelAnimationFrame(frameId);
-
-
         return () => {
-
             cancelAnimationFrame(frameId);
-
             model.removeChild(renderer.domElement);
             renderer.dispose();
         }
@@ -313,10 +313,10 @@ const Content = () => {
             <div id="model" ref={modelRef}></div>
 
             <section  className="hero">
-                <h1> An attempt at modern animations <br/>
+                <h1 ref={headerRef}> An attempt at modern animations <br/>
                 after 2025 burnout
                 </h1>
-                <h2>Project uses React, TSX, GSAP with Scroll Trigger, ThreeJS</h2>
+                <h2 className = "scramble"ref={scrambleRef}>Project uses React, TSX, GSAP with Scroll Trigger, ThreeJS</h2>
                 <p>Lorem ipsum, dolor sit amet consectetur adipisicing elit. Atque ipsam veritatis ipsa nisi non, sint voluptas aspernatur animi ea officiis magni repellendus inventore at et illo quasi fugiat explicabo adipisci!</p>
 
             </section>
