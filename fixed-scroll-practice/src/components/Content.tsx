@@ -55,7 +55,7 @@ const Content = () => {
             }
         });
 
-                
+        //https://codepen.io/anas-frontdev/pen/JooLOmz?editors=1010
         // Creates a looping timeline for a single quote element
         const scrambleQuote = (ref: React.RefObject<HTMLHeadingElement | null>, text: string) => {
             const tl = gsap.timeline({});
