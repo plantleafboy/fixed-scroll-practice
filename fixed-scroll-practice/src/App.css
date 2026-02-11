@@ -46,6 +46,14 @@ h2 {
   line-height: 80%;
 }
 
+.scramble {
+  position: 'absolute';
+  opacity: 0;
+  min-height: 1.2em;
+  /* whiteSpace: 'nowrap'; */
+  display: inline-block;
+       
+}
 p {
   font-size: 1vw;
   font-weight: 500;
@@ -140,4 +148,13 @@ section {
 .outro h2 {
   width: 70%;
   text-align: center;
+}
+
+.split-parent {
+    overflow: hidden; /* This masks the letters as they rise */
+}
+
+.hero h1 {
+    /* Ensure the font is loaded before splitting */
+    visibility: visible; 
 }
